@@ -19,6 +19,7 @@ system `python3-dbus` and `python3-gi`.
 ./screen_capture.py -n 50            # 50 captures
 ./screen_capture.py -s 1.0           # wait 1 s after each key press (slow pages)
 ./screen_capture.py -o ~/my_capture  # choose the output folder
+./screen_capture.py -k right -s 1.5  # paged viewer (e.g. Kindle Cloud Reader): Right arrow
 ```
 
 | Option | Default | Meaning |
@@ -26,6 +27,7 @@ system `python3-dbus` and `python3-gi`.
 | `-n`, `--count` | `300` | Number of screenshots |
 | `-d`, `--delay` | `5` | Seconds before the first capture |
 | `-s`, `--settle` | `0.5` | Seconds after each key press before the next capture |
+| `-k`, `--key` | `down` | Key pressed between captures: `down`, `right`, `pagedown`, `space` |
 | `-o`, `--output` | `captures/<timestamp>/` | Output folder |
 | `--slideshow-only FOLDER` | | Rebuild `slideshow.html` for an existing folder |
 

@@ -18,6 +18,7 @@ slideshow.html viewer that is refreshed after each frame.
 Usage:
     ./screen_capture.py                 # 300 captures, 5 s start delay
     ./screen_capture.py -n 50 -s 1.0    # 50 captures, 1 s settle after key
+    ./screen_capture.py -k right -s 1.5 # paged viewer, e.g. Kindle Cloud Reader
     ./screen_capture.py --slideshow-only captures/20260912-101500
 """
 
@@ -41,8 +42,18 @@ PORTAL_PATH = "/org/freedesktop/portal/desktop"
 REQUEST_IFACE = "org.freedesktop.portal.Request"
 SESSION_IFACE = "org.freedesktop.portal.Session"
 
-XK_DOWN = 0xFF54
 DEVICE_KEYBOARD = 1
+
+# Linux evdev keycodes (linux/input-event-codes.h). Sending keycodes rather
+# than keysyms skips mutter's keysym->keycode lookup; with keysyms the release
+# sometimes arrived late enough for the browser to auto-repeat the key and
+# skip pages (seen in Kindle Cloud Reader, 2026-11-08).
+KEYS = {
+    "down": 108,      # KEY_DOWN
+    "right": 106,     # KEY_RIGHT
+    "pagedown": 109,  # KEY_PAGEDOWN
+    "space": 57,      # KEY_SPACE
+}
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 
@@ -121,12 +132,12 @@ class Keyboard:
         if not int(res.get("devices", 0)) & DEVICE_KEYBOARD:
             raise PortalError("Remote Desktop session granted without keyboard access")
 
-    def tap(self, keysym):
+    def tap(self, keycode):
+        """Press and release at once, so the key is never seen as held."""
         iface = dbus.Interface(self.portal.obj, self.IFACE)
         for state in (1, 0):  # press, release
-            iface.NotifyKeyboardKeysym(self.session, {}, dbus.Int32(keysym),
-                                       dbus.UInt32(state))
-            time.sleep(0.03)
+            iface.NotifyKeyboardKeycode(self.session, {}, dbus.Int32(keycode),
+                                        dbus.UInt32(state))
 
     def close(self):
         if self.session is None:
@@ -287,6 +298,9 @@ def parse_args():
     ap.add_argument("-s", "--settle", type=float, default=0.5,
                     help="seconds to wait after each key press before the next "
                          "capture, so the page can finish scrolling (default: 0.5)")
+    ap.add_argument("-k", "--key", choices=sorted(KEYS), default="down",
+                    help="key pressed between captures (default: down; use "
+                         "right for Kindle Cloud Reader and other paged viewers)")
     ap.add_argument("-o", "--output", type=Path,
                     help="output folder (default: captures/<timestamp> next to this script)")
     ap.add_argument("--slideshow-only", type=Path, metavar="FOLDER",
@@ -335,7 +349,7 @@ def main():
             write_slideshow(out)
             print(f"  [{n}/{args.count}] {dest.name}", flush=True)
             if n < args.count:
-                keyboard.tap(XK_DOWN)
+                keyboard.tap(KEYS[args.key])
                 time.sleep(args.settle)
     except KeyboardInterrupt:
         print("\nStopped by user.")
